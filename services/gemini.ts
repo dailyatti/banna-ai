@@ -8,11 +8,12 @@ export const generateEditedImage = async (
   base64Image: string,
   prompt: string,
   aspectRatio: AspectRatio,
-  usePro: boolean
+  usePro: boolean,
+  apiKey: string
 ): Promise<{ url: string; mimeType: string }> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
+    const ai = new GoogleGenAI({ apiKey });
+
     // Select model - Defaulting to Pro if requested, else Flash
     const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
 
@@ -25,8 +26,8 @@ export const generateEditedImage = async (
     }
 
     // Default prompt if empty
-    const effectivePrompt = prompt.trim() === "" 
-      ? "Enhance the image quality, improve lighting, detail, and clarity while maintaining the original subject." 
+    const effectivePrompt = prompt.trim() === ""
+      ? "Enhance the image quality, improve lighting, detail, and clarity while maintaining the original subject."
       : prompt;
 
     const response = await ai.models.generateContent({
@@ -36,7 +37,7 @@ export const generateEditedImage = async (
           {
             inlineData: {
               data: base64Image,
-              mimeType: 'image/jpeg', 
+              mimeType: 'image/jpeg',
             },
           },
           {
