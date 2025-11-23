@@ -467,9 +467,9 @@ const App: React.FC = () => {
                 <div className="p-4 border-b border-slate-800 bg-slate-950/50 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <div className={`w-2.5 h-2.5 rounded-full ${item.status === 'success' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' :
-                        item.status === 'error' ? 'bg-red-500' :
-                          item.status === 'processing' ? 'bg-banana-500 animate-pulse' :
-                            'bg-slate-600'
+                      item.status === 'error' ? 'bg-red-500' :
+                        item.status === 'processing' ? 'bg-banana-500 animate-pulse' :
+                          'bg-slate-600'
                       }`}></div>
                     <span className="text-xs font-mono text-slate-400 font-bold uppercase tracking-wider">{item.status}</span>
                   </div>
@@ -557,4 +557,49 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white p-4">
+          <div className="bg-red-900/20 border border-red-500/50 p-6 rounded-2xl max-w-md w-full">
+            <h2 className="text-xl font-bold text-red-400 mb-2">Something went wrong</h2>
+            <p className="text-slate-300 mb-4">The application encountered a critical error.</p>
+            <pre className="bg-black/50 p-3 rounded text-xs font-mono text-red-200 overflow-auto max-h-40">
+              {this.state.error?.message}
+            </pre>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg transition-colors"
+            >
+              Reload Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default function AppWrapper() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}

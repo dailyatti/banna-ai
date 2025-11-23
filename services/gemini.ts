@@ -15,7 +15,7 @@ export const generateEditedImage = async (
     const ai = new GoogleGenAI({ apiKey });
 
     // Select model - Defaulting to Pro if requested, else Flash
-    const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+    const model = usePro ? 'gemini-1.5-pro' : 'gemini-2.0-flash-exp';
 
     const imageConfig: any = {
       aspectRatio: aspectRatio,
