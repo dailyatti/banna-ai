@@ -15,7 +15,7 @@ export const generateEditedImage = async (
     const ai = new GoogleGenAI({ apiKey });
 
     // Select model - Defaulting to Pro if requested, else Flash
-    const model = usePro ? 'gemini-1.5-pro' : 'gemini-2.0-flash-exp';
+    const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
 
     const imageConfig: any = {
       aspectRatio: aspectRatio,
@@ -77,5 +77,25 @@ export const generateEditedImage = async (
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     throw new Error(error.message || "Failed to generate image");
+  }
+};
+
+/**
+ * Validates the API key by making a lightweight request
+ */
+export const validateApiKey = async (apiKey: string): Promise<boolean> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    // Use a lightweight model for validation to ensure the key is valid
+    // We use gemini-2.0-flash-exp as a reliable validator, or fallback to the user's requested flash model
+    const model = ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: { parts: [{ text: "test" }] }
+    });
+    await model;
+    return true;
+  } catch (error) {
+    console.error("API Key Validation Failed:", error);
+    return false;
   }
 };

@@ -294,9 +294,10 @@ const App: React.FC = () => {
       <Header />
 
       <ApiKeyModal
-        isOpen={isKeyModalOpen}
+        isOpen={isKeyModalOpen || !hasApiKey}
         onClose={() => setIsKeyModalOpen(false)}
         onSave={handleSaveManualKey}
+        canClose={hasApiKey}
       />
 
       <main className="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 flex flex-col gap-8">
