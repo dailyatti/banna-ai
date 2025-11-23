@@ -46,7 +46,7 @@ export const generateEditedImage = async (
       },
       config: {
         imageConfig: imageConfig,
-      },
+      } as any,
     });
 
     const parts = response.candidates?.[0]?.content?.parts;
