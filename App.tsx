@@ -293,12 +293,14 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-100 selection:bg-banana-500/30">
       <Header />
 
-      <ApiKeyModal
-        isOpen={isKeyModalOpen || !hasApiKey}
-        onClose={() => setIsKeyModalOpen(false)}
-        onSave={handleSaveManualKey}
-        canClose={hasApiKey}
-      />
+      <div id="modal-root">
+        <ApiKeyModal
+          isOpen={isKeyModalOpen || !hasApiKey}
+          onClose={() => setIsKeyModalOpen(false)}
+          onSave={handleSaveManualKey}
+          canClose={hasApiKey}
+        />
+      </div>
 
       <main className="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 flex flex-col gap-8">
 
