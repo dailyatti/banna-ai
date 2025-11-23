@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Button } from './components/Button';
 import { ApiKeyModal } from './components/ApiKeyModal';
-import { AspectRatio, ImageItem, GenerationSettings, ExportFormat, ImageMetadata } from './types';
+import { AspectRatio, ImageItem, GenerationSettings, ExportFormat, ImageMetadata, CreditInfo } from './types';
 import { generateEditedImage } from './services/gemini';
 
 // --- UTILS ---
@@ -77,7 +77,6 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<GenerationSettings>({
     prompt: "",
     aspectRatio: AspectRatio.YOUTUBE,
-    usePro: true,
     exportFormat: 'image/jpeg'
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -86,6 +85,14 @@ const App: React.FC = () => {
   // API Key Management
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+
+  // Credit Tracking
+  const COST_PER_IMAGE = 0.10; // Pro model cost
+  const [creditInfo, setCreditInfo] = useState<CreditInfo>({
+    sessionGenerations: 0,
+    estimatedSessionCost: 0,
+    costPerImage: COST_PER_IMAGE
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -140,8 +147,13 @@ const App: React.FC = () => {
 
   // --- HANDLERS ---
 
-  const handleProToggle = async () => {
-    setSettings(s => ({ ...s, usePro: !s.usePro }));
+  // Credit tracking update helper
+  const incrementCredits = () => {
+    setCreditInfo(prev => ({
+      ...prev,
+      sessionGenerations: prev.sessionGenerations + 1,
+      estimatedSessionCost: (prev.sessionGenerations + 1) * COST_PER_IMAGE
+    }));
   };
 
   const addFiles = async (files: FileList | null) => {
@@ -201,8 +213,8 @@ const App: React.FC = () => {
       const apiKey = window.process?.env?.API_KEY || localStorage.getItem('gemini_api_key');
       if (!apiKey) throw new Error("API Key not found");
 
-      // Generate
-      const result = await generateEditedImage(base64, settings.prompt, settings.aspectRatio, settings.usePro, apiKey);
+      // Generate with Pro model
+      const result = await generateEditedImage(base64, settings.prompt, settings.aspectRatio, apiKey);
 
       // Convert to Desired Export Format
       const convertedDataUrl = await convertImageFormat(result.url, settings.exportFormat);
@@ -224,6 +236,9 @@ const App: React.FC = () => {
           mimeType: settings.exportFormat
         }
       } : i));
+
+      // Update credit tracking
+      incrementCredits();
 
     } catch (e: any) {
       if (e.message && e.message.includes("Requested entity was not found")) {
@@ -308,55 +323,55 @@ const App: React.FC = () => {
         <div className="flex justify-end items-center gap-4">
           {hasApiKey ? (
             <div
-              className="flex items-center gap-3 animate-fade-in bg-slate-900/50 backdrop-blur rounded-full pl-2 pr-4 py-1 border border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors"
+              className="flex items-center gap-3 animate-fade-in bg-gradient-to-r from-slate-900/70 to-slate-800/50 backdrop-blur-xl rounded-full pl-3 pr-4 py-2 border border-emerald-500/30 cursor-pointer hover:border-emerald-400/50 transition-all shadow-lg shadow-emerald-500/10"
               onClick={() => setIsKeyModalOpen(true)}
-              title="Click to update API Key"
+              title="Click to manage API credentials"
             >
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-xs font-mono text-green-400">System Online</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse"></span>
+              <span className="text-xs font-semibold tracking-wide text-emerald-400">API Connected</span>
             </div>
           ) : (
             <Button
               size="sm"
               variant="primary"
-              className="shadow-banana-500/30 shadow-lg animate-pulse"
+              className="shadow-amber-500/30 shadow-lg animate-pulse bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400"
               onClick={handleConnect}
             >
-              Connect API Key
+              Connect API Credentials
             </Button>
           )}
         </div>
 
         {/* SETTINGS BAR */}
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800 p-6 rounded-3xl shadow-2xl grid grid-cols-1 md:grid-cols-12 gap-6 items-end sticky top-24 z-40">
+        <div className="bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-slate-800/30 backdrop-blur-2xl border border-slate-700/50 p-8 rounded-3xl shadow-2xl shadow-black/40 grid grid-cols-1 md:grid-cols-12 gap-6 items-end sticky top-24 z-40">
 
           {/* Prompt Input */}
           <div className="md:col-span-5 w-full space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-banana-400 uppercase tracking-wider">Instruction</label>
-              <span className="text-[10px] text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-800">Optional</span>
+              <label className="text-xs font-bold text-amber-400 uppercase tracking-wider">Generation Prompt</label>
+              <span className="text-[10px] text-slate-400 bg-slate-800/70 px-2.5 py-1 rounded-full border border-slate-700/50">Optional</span>
             </div>
             <input
               type="text"
-              placeholder="E.g., Add a futuristic neon filter..."
+              placeholder="Describe the transformation you want..."
               value={settings.prompt}
               onChange={e => setSettings({ ...settings, prompt: e.target.value })}
-              className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-banana-500/50 focus:border-banana-500/50 placeholder:text-slate-700 transition-all"
+              className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl px-4 py-3.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 placeholder:text-slate-600 transition-all shadow-inner"
             />
           </div>
 
           {/* Aspect Ratio */}
           <div className="md:col-span-2 w-full space-y-2">
-            <label className="text-xs font-bold text-banana-400 uppercase tracking-wider">Ratio</label>
+            <label className="text-xs font-bold text-amber-400 uppercase tracking-wider">Aspect Ratio</label>
             <div className="relative">
               <select
                 value={settings.aspectRatio}
                 onChange={e => setSettings({ ...settings, aspectRatio: e.target.value as AspectRatio })}
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-banana-500/50 appearance-none cursor-pointer"
+                className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl px-3 py-3.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 appearance-none cursor-pointer shadow-inner transition-all hover:border-slate-600"
               >
                 {Object.values(AspectRatio).map(r => <option key={r} value={r}>{r}</option>)}
               </select>
-              <div className="absolute right-3 top-3.5 pointer-events-none text-slate-500">
+              <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
@@ -364,37 +379,49 @@ const App: React.FC = () => {
 
           {/* Export Format */}
           <div className="md:col-span-2 w-full space-y-2">
-            <label className="text-xs font-bold text-banana-400 uppercase tracking-wider">Format</label>
+            <label className="text-xs font-bold text-amber-400 uppercase tracking-wider">Output Format</label>
             <div className="relative">
               <select
                 value={settings.exportFormat}
                 onChange={e => setSettings({ ...settings, exportFormat: e.target.value as ExportFormat })}
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-banana-500/50 appearance-none cursor-pointer"
+                className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl px-3 py-3.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 appearance-none cursor-pointer shadow-inner transition-all hover:border-slate-600"
               >
-                <option value="image/jpeg">JPG</option>
+                <option value="image/jpeg">JPEG</option>
                 <option value="image/png">PNG</option>
                 <option value="image/webp">WebP</option>
               </select>
-              <div className="absolute right-3 top-3.5 pointer-events-none text-slate-500">
+              <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
           </div>
 
-          {/* Pro Toggle */}
-          <div className="md:col-span-3 w-full flex items-center justify-end gap-3 pb-2 pl-4 border-l border-slate-800">
-            <div className="flex flex-col items-end cursor-pointer" onClick={handleProToggle}>
-              <span className={`text-sm font-bold transition-colors ${settings.usePro ? 'text-banana-400' : 'text-slate-500'}`}>
-                {settings.usePro ? 'Pro Model (2K)' : 'Flash Model'}
-              </span>
-              <span className="text-[10px] text-slate-500">{settings.usePro ? 'Max Quality' : 'High Speed'}</span>
+          {/* Credit Tracker */}
+          <div className="md:col-span-3 w-full flex items-center justify-end gap-3 pb-2 pl-4 border-l border-amber-900/30">
+            <div className="flex flex-col items-end space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Session Usage</span>
+                <span className="text-sm font-bold text-amber-400">{creditInfo.sessionGenerations} images</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Est. Cost</span>
+                <span className="text-sm font-mono font-bold text-amber-500">${creditInfo.estimatedSessionCost.toFixed(2)}</span>
+              </div>
+              <a
+                href="https://console.cloud.google.com/billing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-slate-600 hover:text-amber-400 transition-colors underline"
+              >
+                View Billing →
+              </a>
             </div>
-            <button
-              onClick={handleProToggle}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none shadow-inner ${settings.usePro ? 'bg-banana-500' : 'bg-slate-700'}`}
-            >
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${settings.usePro ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
+            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-xl px-3 py-2 border border-amber-500/30">
+              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span className="text-[9px] font-bold text-amber-400 mt-0.5">PRO 2K</span>
+            </div>
           </div>
         </div>
 
@@ -404,7 +431,7 @@ const App: React.FC = () => {
           {/* Drop Zone */}
           <div
             className={`flex-grow border-2 border-dashed rounded-3xl transition-all duration-300 flex flex-col items-center justify-center py-12 cursor-pointer relative overflow-hidden group
-                    ${isDragging ? 'border-banana-500 bg-banana-500/10' : 'border-slate-800 bg-slate-900/20 hover:bg-slate-900/40 hover:border-slate-600'}
+                    ${isDragging ? 'border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/20' : 'border-slate-700/50 bg-gradient-to-br from-slate-900/30 to-slate-800/20 hover:bg-slate-800/30 hover:border-amber-600/40 hover:shadow-xl'}
                 `}
             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
@@ -412,12 +439,13 @@ const App: React.FC = () => {
             onClick={() => fileInputRef.current?.click()}
           >
             <div className="z-10 text-center space-y-4 pointer-events-none">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform shadow-xl border border-slate-700 group-hover:border-banana-500/50">
-                <svg className={`w-8 h-8 ${isDragging ? 'text-banana-400' : 'text-slate-400 group-hover:text-banana-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-700/40 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-2xl border border-amber-500/20 group-hover:border-amber-500/50 group-hover:shadow-amber-500/20">
+                <svg className={`w-10 h-10 ${isDragging ? 'text-amber-400' : 'text-slate-400 group-hover:text-amber-400'} transition-colors`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white group-hover:text-banana-400 transition-colors">Upload Images</h3>
-                <p className="text-sm text-slate-500">Drag & drop or click to browse</p>
+                <h3 className="text-2xl font-bold text-white group-hover:text-amber-400 transition-colors tracking-tight">Upload Source Images</h3>
+                <p className="text-sm text-slate-400 mt-2">Drag & drop or click to select files</p>
+                <p className="text-xs text-slate-600 mt-1">Supports JPG, PNG, WebP</p>
               </div>
             </div>
             <input ref={fileInputRef} type="file" multiple className="hidden" accept="image/*" onChange={e => addFiles(e.target.files)} />
@@ -425,10 +453,10 @@ const App: React.FC = () => {
 
           {/* Bulk Actions Panel */}
           <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-3">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col gap-4 h-full">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-                <span className="text-sm text-slate-400 font-medium">Processing Queue</span>
-                <span className="text-xs font-mono bg-slate-800 text-white px-2 py-1 rounded-md">{items.length}</span>
+            <div className="bg-gradient-to-br from-slate-900/70 to-slate-800/40 border border-slate-700/50 rounded-3xl p-6 flex flex-col gap-4 h-full shadow-2xl">
+              <div className="flex justify-between items-center border-b border-slate-700/50 pb-4">
+                <span className="text-sm text-slate-300 font-semibold tracking-wide">Generation Queue</span>
+                <span className="text-xs font-mono bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg border border-amber-500/30 font-bold">{items.length}</span>
               </div>
 
               <div className="flex-grow flex flex-col justify-center gap-3">
@@ -437,22 +465,22 @@ const App: React.FC = () => {
                   disabled={globalLoading || items.length === 0}
                   variant="primary"
                   isLoading={globalLoading}
-                  className="w-full shadow-banana-500/20 shadow-lg"
+                  className="w-full shadow-amber-500/30 shadow-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 font-semibold"
                 >
-                  Process Queue
+                  Process All Images
                 </Button>
                 <Button
                   onClick={downloadAll}
                   disabled={items.filter(i => i.status === 'success').length === 0}
                   variant="secondary"
-                  className="w-full"
+                  className="w-full font-semibold"
                 >
-                  Download ZIP
+                  Download as ZIP
                 </Button>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 text-center">
-                <button onClick={() => setItems([])} className="text-xs text-slate-600 hover:text-red-400 transition-colors">
+              <div className="pt-4 border-t border-slate-700/50 text-center">
+                <button onClick={() => setItems([])} className="text-xs text-slate-500 hover:text-red-400 transition-colors font-medium">
                   Clear All Items
                 </button>
               </div>
@@ -500,8 +528,8 @@ const App: React.FC = () => {
                       <img src={item.previewUrl} className={`w-full h-full object-cover transition-opacity duration-500 ${item.status === 'processing' ? 'opacity-30 blur-sm' : 'opacity-100'}`} alt="Preview" />
                       {item.status === 'processing' && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <div className="w-12 h-12 border-4 border-banana-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
-                          <span className="text-xs text-banana-400 mt-3 font-mono animate-pulse">Generating...</span>
+                          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
+                          <span className="text-xs text-amber-400 mt-3 font-mono animate-pulse font-medium">Generating...</span>
                         </div>
                       )}
                       {item.status === 'error' && (
@@ -519,16 +547,16 @@ const App: React.FC = () => {
                 {/* Metadata Footer */}
                 <div className="p-4 bg-slate-900 space-y-4">
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono border-b border-slate-800 pb-4">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono border-b border-slate-700/50 pb-4">
                     <div className="text-slate-500">
-                      <span className="block text-slate-400 font-bold mb-1">INPUT</span>
-                      {item.metadata.width} &times; {item.metadata.height}px <br />
+                      <span className="block text-slate-400 font-bold mb-1 tracking-wider">SOURCE</span>
+                      {item.metadata.width} × {item.metadata.height}px <br />
                       {formatBytes(item.metadata.sizeBytes)}
                     </div>
                     {item.resultMetadata && (
                       <div className="text-right text-slate-500">
-                        <span className="block text-banana-500 font-bold mb-1">OUTPUT</span>
-                        {item.resultMetadata.width} &times; {item.resultMetadata.height}px <br />
+                        <span className="block text-amber-400 font-bold mb-1 tracking-wider">GENERATED</span>
+                        {item.resultMetadata.width} × {item.resultMetadata.height}px <br />
                         {formatBytes(item.resultMetadata.sizeBytes)}
                       </div>
                     )}
@@ -537,12 +565,12 @@ const App: React.FC = () => {
                   {/* Actions */}
                   <div className="flex gap-2">
                     {item.status !== 'success' && item.status !== 'processing' && (
-                      <Button size="sm" variant="secondary" onClick={() => processImage(item.id)} className="w-full">
-                        Render Image
+                      <Button size="sm" variant="secondary" onClick={() => processImage(item.id)} className="w-full font-semibold">
+                        Generate Image
                       </Button>
                     )}
                     {item.status === 'success' && (
-                      <Button size="sm" variant="primary" onClick={() => downloadItem(item)} className="w-full">
+                      <Button size="sm" variant="primary" onClick={() => downloadItem(item)} className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 font-semibold">
                         Download {settings.exportFormat.split('/')[1].toUpperCase()}
                       </Button>
                     )}

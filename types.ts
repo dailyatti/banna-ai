@@ -22,11 +22,11 @@ export interface ImageItem {
   originalFile: File;
   previewUrl: string; // Object URL for display
   metadata: ImageMetadata;
-  
+
   // Processing State
   status: ProcessStatus;
   errorMessage?: string;
-  
+
   // Result
   resultUrl?: string;
   resultMetadata?: ImageMetadata;
@@ -35,6 +35,11 @@ export interface ImageItem {
 export interface GenerationSettings {
   prompt: string;
   aspectRatio: AspectRatio;
-  usePro: boolean;
   exportFormat: ExportFormat;
+}
+
+export interface CreditInfo {
+  sessionGenerations: number;
+  estimatedSessionCost: number;
+  costPerImage: number;
 }

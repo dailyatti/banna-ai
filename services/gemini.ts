@@ -6,7 +6,6 @@ export const generateEditedImage = async (
   base64Image: string,
   prompt: string,
   aspectRatio: string,
-  usePro: boolean,
   apiKey: string
 ) => {
   try {
@@ -19,8 +18,7 @@ export const generateEditedImage = async (
         apiKey,
         imageBase64: base64Image.split(',')[1] || base64Image, // Ensure we send only the data part if it has prefix
         prompt,
-        aspectRatio,
-        usePro
+        aspectRatio
       }),
     });
 
