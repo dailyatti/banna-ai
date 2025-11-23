@@ -1,78 +1,40 @@
-import { GoogleGenAI } from "@google/genai";
-import { AspectRatio } from "../types";
-
 /**
- * edits or generates an image using Gemini
+ * Generates an edited image using Gemini via Netlify Function
+ * Implements "User-Key Passthrough" pattern to avoid CORS
  */
 export const generateEditedImage = async (
   base64Image: string,
   prompt: string,
-  aspectRatio: AspectRatio,
+  aspectRatio: string,
   usePro: boolean,
   apiKey: string
-): Promise<{ url: string; mimeType: string }> => {
+) => {
   try {
-    const ai = new GoogleGenAI({ apiKey });
-
-    // Select model - Defaulting to Pro if requested, else Flash
-    const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
-
-    const imageConfig: any = {
-      aspectRatio: aspectRatio,
-    };
-
-    if (usePro) {
-      imageConfig.imageSize = '2K';
-    }
-
-    // Default prompt if empty
-    const effectivePrompt = prompt.trim() === ""
-      ? "Enhance the image quality, improve lighting, detail, and clarity while maintaining the original subject."
-      : prompt;
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: 'image/jpeg',
-            },
-          },
-          {
-            text: effectivePrompt,
-          },
-        ],
+    const response = await fetch('/.netlify/functions/nano-banana', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      config: {
-        imageConfig: imageConfig,
-      } as any,
+      body: JSON.stringify({
+        apiKey,
+        imageBase64: base64Image.split(',')[1] || base64Image, // Ensure we send only the data part if it has prefix
+        prompt,
+        aspectRatio,
+        usePro
+      }),
     });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-
-    if (!parts) {
-      throw new Error("No content generated");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Server error: ${response.status}`);
     }
 
-    for (const part of parts) {
-      if (part.inlineData && part.inlineData.data) {
-        const base64Data = part.inlineData.data;
-        const mimeType = part.inlineData.mimeType || 'image/png';
-        return {
-          url: `data:${mimeType};base64,${base64Data}`,
-          mimeType: mimeType
-        };
-      }
-    }
-
-    const textPart = parts.find(p => p.text);
-    if (textPart) {
-      throw new Error(`Model refusal: ${textPart.text}`);
-    }
-
-    throw new Error("No image data found in response");
+    const data = await response.json();
+    // App.tsx expects { url: string, mimeType: string }
+    return {
+      url: `data:image/jpeg;base64,${data.image}`,
+      mimeType: 'image/jpeg'
+    };
 
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
@@ -81,19 +43,24 @@ export const generateEditedImage = async (
 };
 
 /**
- * Validates the API key by making a lightweight request
+ * Validates the API key via Netlify Function
  */
 export const validateApiKey = async (apiKey: string): Promise<boolean> => {
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    // Use a lightweight model for validation to ensure the key is valid
-    // We use gemini-2.0-flash-exp as a reliable validator, or fallback to the user's requested flash model
-    const model = ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
-      contents: { parts: [{ text: "test" }] }
+    const response = await fetch('/.netlify/functions/validate-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ apiKey }),
     });
-    await model;
-    return true;
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data = await response.json();
+    return data.valid;
   } catch (error) {
     console.error("API Key Validation Failed:", error);
     return false;
