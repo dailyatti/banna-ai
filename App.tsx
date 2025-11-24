@@ -86,8 +86,8 @@ const App: React.FC = () => {
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
 
-  // Credit Tracking
-  const COST_PER_IMAGE = 0.10; // Pro model cost
+  // Credit Tracking - Gemini 3 Pro Image Preview pricing
+  const COST_PER_IMAGE = 0.134; // $0.134 per image output (official pricing)
   const [creditInfo, setCreditInfo] = useState<CreditInfo>({
     sessionGenerations: 0,
     estimatedSessionCost: 0,
